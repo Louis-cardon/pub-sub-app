@@ -19,7 +19,12 @@ jobs:
           
       - name: Build and start Docker Compose
         run: |
-          docker compose -f docker-compose.yml up --build -d
+          docker-compose -f docker-compose.yml up --build -d
+        env:
+          ACCEPT_EULA: "Y"
+          MSSQL_SA_PASSWORD: "P@ssw0rd2023!" # Utilisez des secrets pour plus de sécurité
+          RABBITMQ_DEFAULT_USER: "admin"
+          RABBITMQ_DEFAULT_PASS: "admin"
 
       - name: Save Docker images
         run: |
