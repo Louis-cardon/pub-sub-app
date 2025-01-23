@@ -10,31 +10,39 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-        name: Checkout code
+      # Récupérer le code source
+      - name: Checkout code
+        uses: actions/checkout@v4
 
+      # Configurer le SDK .NET 9.0
       - name: Setup .NET
         uses: actions/setup-dotnet@v3
         with:
-          dotnet-version: 9.0
+          dotnet-version: '9.0'
 
+      # Restaurer les dépendances
       - name: Restore dependencies
         run: dotnet restore
 
+      # Compiler le projet
       - name: Build project
         run: dotnet build --no-restore --configuration Release
 
+      # Publier le projet
       - name: Publish project
         run: dotnet publish --no-build --configuration Release --output ./output
 
+      # Installer les outils EF Core
       - name: Install EF Tools
         run: dotnet tool install --global dotnet-ef
 
+      # Appliquer les migrations de base de données
       - name: Apply database migrations
         env:
           DOTNET_ROOT: /usr/share/dotnet
         run: dotnet ef database update
 
+      # Uploader les fichiers publiés en tant qu'artefacts
       - name: Upload artifact for deployment
         uses: actions/upload-artifact@v3
         with:
@@ -47,7 +55,9 @@ jobs:
     environment:
       name: Production
     steps:
+      # Télécharger les artefacts depuis le job précédent
       - name: Download artifact from build job
         uses: actions/download-artifact@v3
         with:
           name: api-build
+
