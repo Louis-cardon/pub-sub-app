@@ -55,7 +55,7 @@ jobs:
         run: |
           docker-compose -f docker-compose.yml push
 
-      # Optional: If you want to save and upload images as artifacts
+      # Optional: Save and upload images as artifacts
       - name: Save Docker images
         run: |
           docker save $(docker-compose -f docker-compose.yml config --services | xargs) > docker-images.tar
