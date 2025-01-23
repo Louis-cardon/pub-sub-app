@@ -1,3 +1,4 @@
+# docker-compose.yml
 version: '3.8'
 
 volumes:
@@ -6,24 +7,24 @@ volumes:
 services:
   rabbitmq:
     image: rabbitmq:3-management
-    container_name: lab_rabbitmq
+    container_name: rabbitmq
     healthcheck:
       test: rabbitmq-diagnostics -q ping
       interval: 30s
       timeout: 30s
       retries: 3
     ports:
-      - 15672:15672 #web
-      - 5672:5672 #amqp
+      - 15672:15672
+      - 5672:5672
     environment:
       - RABBITMQ_DEFAULT_USER=admin
       - RABBITMQ_DEFAULT_PASS=admin
 
   mssql:
     image: mcr.microsoft.com/mssql/server:2022-latest
-    container_name: lab_mssql
+    container_name: mssql
     ports:
-      - 1433:1433 #sql
+      - 1433:1433
     volumes:
       - mssql_data:/var/opt/mssql/data/
     environment:
@@ -32,6 +33,7 @@ services:
 
   api:
     build: ./RabbitMqProductAPI
+    container_name: api
     ports:
       - 8090:8080
     environment:
@@ -45,7 +47,63 @@ services:
 
   console:
     build: ./RabbitMQProduct.ConsoleApplication
-    container_name: lab_console
+    container_name: console
+    environment:
+      - RabbitMQ__Hostname=rabbitmq
+      - RabbitMQ__Username=admin
+      - RabbitMQ__Password=admin
+    depends_on:
+      rabbitmq:
+        condition: service_healthy# docker-compose.yml
+version: '3.8'
+
+volumes:
+  mssql_data:
+
+services:
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: rabbitmq
+    healthcheck:
+      test: rabbitmq-diagnostics -q ping
+      interval: 30s
+      timeout: 30s
+      retries: 3
+    ports:
+      - 15672:15672
+      - 5672:5672
+    environment:
+      - RABBITMQ_DEFAULT_USER=admin
+      - RABBITMQ_DEFAULT_PASS=admin
+
+  mssql:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: mssql
+    ports:
+      - 1433:1433
+    volumes:
+      - mssql_data:/var/opt/mssql/data/
+    environment:
+      - ACCEPT_EULA=Y
+      - MSSQL_SA_PASSWORD=P@ssw0rd2023!
+
+  api:
+    build: ./RabbitMqProductAPI
+    container_name: api
+    ports:
+      - 8090:8080
+    environment:
+      - ConnectionStrings__DefaultConnection=Server=tcp:mssql,1433;Initial Catalog=RabbitMqDemo;Persist Security Info=False;User ID=sa;Password=P@ssw0rd2023!;Connection Timeout=30;
+      - RabbitMQ__Hostname=rabbitmq
+      - RabbitMQ__Username=admin
+      - RabbitMQ__Password=admin
+    depends_on:
+      - rabbitmq
+      - mssql
+
+  console:
+    build: ./RabbitMQProduct.ConsoleApplication
+    container_name: console
     environment:
       - RabbitMQ__Hostname=rabbitmq
       - RabbitMQ__Username=admin
