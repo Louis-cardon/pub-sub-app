@@ -1,4 +1,4 @@
-name: Build and deploy API
+name: Build and Package with Docker Compose
 
 on:
   push:
@@ -10,54 +10,43 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      # Récupérer le code source
+      # Étape 1 : Récupérer le code source
       - name: Checkout code
         uses: actions/checkout@v4
 
-      # Configurer le SDK .NET 9.0
-      - name: Setup .NET
-        uses: actions/setup-dotnet@v3
+      # Étape 2 : Configurer Docker
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+
+      - name: Log in to DockerHub
+        uses: docker/login-action@v2
         with:
-          dotnet-version: '9.0'
+          username: ${{ secrets.DOCKER_USERNAME }} # Ajoutez ce secret dans GitHub
+          password: ${{ secrets.DOCKER_PASSWORD }} # Ajoutez ce secret dans GitHub
 
-      # Restaurer les dépendances
-      - name: Restore dependencies
-        run: dotnet restore
-
-      # Compiler le projet
-      - name: Build project
-        run: dotnet build --no-restore --configuration Release
-
-      # Publier le projet
-      - name: Publish project
-        run: dotnet publish --no-build --configuration Release --output ./output
-
-      # Installer les outils EF Core
-      - name: Install EF Tools
-        run: dotnet tool install --global dotnet-ef
-
-      # Appliquer les migrations de base de données
-      - name: Apply database migrations
+      # Étape 3 : Construire et démarrer les conteneurs Docker Compose
+      - name: Build and start Docker Compose
+        run: |
+          docker-compose -f docker-compose.yml up --build -d
         env:
-          DOTNET_ROOT: /usr/share/dotnet
-        run: dotnet ef database update
+          ACCEPT_EULA: "Y"
+          MSSQL_SA_PASSWORD: "P@ssw0rd2023!" # Utilisez des secrets si possible
+          RABBITMQ_DEFAULT_USER: "admin"
+          RABBITMQ_DEFAULT_PASS: "admin"
 
-      # Uploader les fichiers publiés en tant qu'artefacts
-      - name: Upload artifact for deployment
+      # Étape 4 : Vérifier l'état des conteneurs
+      - name: Check running containers
+        run: docker ps
+
+      # Étape 5 : Packager les images Docker pour le déploiement
+      - name: Save Docker images as artifacts
+        run: |
+          docker save lab_rabbitmq lab_mssql lab_console lab_api > docker-images.tar
         uses: actions/upload-artifact@v3
         with:
-          name: api-build
-          path: ./output
+          name: docker-images
+          path: docker-images.tar
 
-  deploy:
-    needs: build
-    runs-on: ubuntu-latest
-    environment:
-      name: Production
-    steps:
-      # Télécharger les artefacts depuis le job précédent
-      - name: Download artifact from build job
-        uses: actions/download-artifact@v3
-        with:
-          name: api-build
-
+      # Étape 6 : Nettoyer l'environnement Docker
+      - name: Clean up Docker
+        run: docker-compose -f docker-compose.yml down
